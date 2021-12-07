@@ -98,4 +98,5 @@ class jieba_split:
 if __name__ == "__main__":
     jieba_split = jieba_split()
     aa=jieba_split.run_split_data()
-    print(len(set(aa["SPMC_type"].values)))
+    # print(len(set(aa["SPMC_type"].values)))
+    print(aa)
