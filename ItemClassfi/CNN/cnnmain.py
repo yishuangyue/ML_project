@@ -11,9 +11,8 @@
 import pandas as pd
 # 如果多进程分词可以导入
 
-from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.utils import to_categorical, multi_gpu_model
+from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras import Model,models,callbacks
@@ -21,8 +20,6 @@ from tensorflow.keras.layers import Dense, Embedding, Input, BatchNormalization
 from tensorflow.keras.layers import  Flatten, Dropout, MaxPool1D, SeparableConvolution1D
 from tensorflow.keras import regularizers
 from tensorflow.keras.layers import concatenate
-from tensorflow import saved_model
-# 准确率
 from ItemClassfi.JiebaSplit.jiebasplit import jieba_split
 
 
