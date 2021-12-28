@@ -3,16 +3,17 @@
 """
 :Copyright: Tech. Co.,Ltd.
 :Author: liting
-:Date: 2021/11/30 11:36 上午 
+:Date: 2021/11/30 11:36 上午
 :@File : cnnmain
 :Version: v.1.0
 :Description:
 """
 import codecs
-import os
+import os,sys
 import numpy as np
 import logging 
 import pandas as pd
+sys.path.append(r"/opt/liting/ML_project")
 # 如果多进程分词可以导入
 from gensim.models.keyedvectors import load_word2vec_format
 from sklearn.model_selection import train_test_split
@@ -100,7 +101,7 @@ class CNNclassifier():
                 if token in token_key.keys() and len(inf_list[-embed_dim:]) == embed_dim:
                     embed_dict[token] = list(map(float, inf_list[-embed_dim:]))
 
-        logging.info("{}tokens have corresponding embedding vector".format(len(embed_dict)))
+        print("{}tokens have corresponding embedding vector".format(len(embed_dict)))
 
         return  embed_dict
 
@@ -122,7 +123,7 @@ class CNNclassifier():
                           , output_dim = embedding_dims
                           , embeddings_initializer= tf.keras.initializers.Constant(embed_matr)
                           # , embeddings_initializer= tf.constant_initializer(embed_matr)
-                          # , trainable=False
+                         # , trainable=False
                           )(tensor_input)
         #
         cnn1 = SeparableConvolution1D(128, 3, padding='same', strides=1, activation='relu',
@@ -145,7 +146,7 @@ class CNNclassifier():
         dropout = Dropout(0.5)(dense)
         tensor_output = Dense(num_class, activation='softmax')(dropout)
         model = Model(inputs=tensor_input, outputs=tensor_output)
-        logging.info(model.summary())
+        print(model.summary())
         # model = multi_gpu_model(model, gpus=i) 如果有gpu,i为gpu数目
         model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
         return model
@@ -158,16 +159,16 @@ class CNNclassifier():
         loaded_model = models.model_from_json(loaded_model_json)
         # load weights into new model
         loaded_model.load_weights(self.clf_path)
-        logging.info("Loaded model from disk")
+        print("Loaded model from disk")
         # evaluate loaded model on test data
         loaded_model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
         score = loaded_model.evaluate(dataList, labelList, verbose=0)
-        logging.info("测试集精确度%s: %.2f%%" % (loaded_model.metrics_names[1], score[1]*100))
+        print("测试集精确度%s: %.2f%%" % (loaded_model.metrics_names[1], score[1]*100))
         # preds = model.predict(dataList)
-        # logging.info("准确率：%s" % accuracy_score(labelList, preds))
+        # print("准确率：%s" % accuracy_score(labelList, preds))
         # end_df = pd.concat([pd.DataFrame(dataList), pd.DataFrame(labelList)
         #                        , pd.DataFrame(preds.tolist())], axis=1, ignore_index=False)
-        # logging.info(end_df.head(20))
+        # print(end_df.head(20))
         # return preds
 
     def write_data(self, preds):
@@ -181,7 +182,8 @@ class CNNclassifier():
 
 if __name__ == '__main__':
     # 原始数据路径
-    abs_path= "/"
+    # abs_path="/Users/liting/Documents/python/Moudle/ML_project"
+    abs_path="/opt/liting/ML_project"
     input_path = os.path.join(abs_path,"ItemClassfi/JiebaSplit/test.json")
     # 停用词路径
     chinsesstop_path = os.path.join(abs_path,"ItemClassfi/JiebaSplit/chinsesstop.txt")
@@ -204,17 +206,18 @@ if __name__ == '__main__':
     # 2、载入分词好的数据
     jiaba_split = jieba_split(input_path=input_path, chinsesstop_path=chinsesstop_path)
     df_data = jiaba_split.run_split_data()    # df["名称"，'分类'，'分词结果']
-
+    print("df_data:{}".format(df_data.shape))
+    print(df_data["MC"])
     # 3、生成训练集和测试集
     num_words = 12000  # 总词数
     max_len = 8  # ，句子长度，不足取0
     x, y, vocab_size, num_classes,token_key = CNNclassifier.create_x_y(df_data, num_words, max_len)
     train_data, test_data, train_label, test_label = train_test_split(x, y, random_state=1, train_size=0.8,
                                                                       test_size=0.2)
-    logging.info("训练集测试集生成好了, max_len句子最大词数={},vocab_size 词总数={}, num_classes类别数量={} ".format(max_len, vocab_size, num_classes))
-    logging.info("train_data.shape:{}".format(train_data.shape))
-    logging.info("train_label.shape:{}".format(train_label.shape))
-    logging.info(num_classes, vocab_size, max_len)
+    print("训练集测试集生成好了, max_len句子最大词数={},vocab_size 词总数={}, num_classes类别数量={} ".format(max_len, vocab_size, num_classes))
+    print("train_data.shape:{}".format(train_data.shape))
+    print("train_label.shape:{}".format(train_label.shape))
+    print(num_classes, vocab_size, max_len)
 
     # 获取词嵌入矩阵预训练结果
     # embed_dict= CNNclassifier.get_embedding(embed_path, token_key, 300)
@@ -222,23 +225,30 @@ if __name__ == '__main__':
 
     # create a weight matrix for words in training docs
     embedding_matrix = np.zeros((vocab_size+1, 300))
+    cnt=0
     for word, i in token_key.items():
         # embedding_vector = embed_dict.get(word)
-        embedding_vector= wv_from_text.get_vector(word)
-        if embedding_vector is not None:
-            embedding_matrix[i] = embedding_vector
+        try:
+            embedding_vector= wv_from_text.get_vector(word)
+            if embedding_vector is not None:
+                embedding_matrix[i] = embedding_vector
+                cnt+=1
+        except:
+            pass
+        continue
 
 
 
-    logging.info("embedding shape:{}".format(embedding_matrix.shape))
+    print("embedding shape:{}".format(embedding_matrix.shape))
+    print("cnt:{}".format(cnt))
     # # 4、训练model
     # 定义模型结构
     model_sepcnn = CNNclassifier.cnn(vocab_size=vocab_size, embedding_dims=300, max_len=max_len,
                                      num_class=num_classes,embed_matr=embedding_matrix)
     # # 修改callback的参数列表,选择需要保存的参数，回调函数
     # 下面是通过tensorboard --logdir=callbacks生成的本地网页数据:http://localhost:6006/(通过端口6006在网页中打开)
-    # python3 -m /Users/liting/Library/Python/3.6/lib/python/site-packages/tensorboard/tensorboard.main --logdir=/Users/liting/Documents/python/Moudle/ML_project1/logs/fit/
-
+    # python3 -m /Users/liting/Library/Python/3.6/lib/python/site-packages/tensorboard/tensorboard.main --logdir=/Users/liting/Documents/python/Moudle/ML_project/logs/fit/
+# python -m /root/anaconda3/lib/python3.6/site-packages/tensorboard/main.py  --logdir=/opt/liting/ML_project/logs/fit/
 
     callbacks = [
         callbacks.ModelCheckpoint(filepath=clfmodel_path,  # 模型的输出目录
@@ -248,26 +258,26 @@ if __name__ == '__main__':
         callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
     ]
 
-    model_sepcnn.fit(train_data, train_label, epochs=100, batch_size=512
+    model_sepcnn.fit(train_data, train_label, epochs=300, batch_size=256
                      # ,validation_data=(x_valid_scaled, y_valid)
                     ,callbacks =callbacks
                      )
-    logging.info('训练完成')
+    print('训练完成')
     # 5、模型预估evaluate the model
     scores = model_sepcnn.evaluate(train_data, train_label, verbose=0)
-    logging.info("训练集%s: %.2f%%" % (model_sepcnn.metrics_names[1], scores[1]*100))
+    print("训练集%s: %.2f%%" % (model_sepcnn.metrics_names[1], scores[1]*100))
     scores = model_sepcnn.evaluate(test_data, test_label, verbose=0)
-    logging.info("测试集%s: %.2f%%" % (model_sepcnn.metrics_names[1], scores[1]*100))
+    print("测试集%s: %.2f%%" % (model_sepcnn.metrics_names[1], scores[1]*100))
     model_sepcnn.save(clfmodel_path)
-    logging.info("模型保存成功")
+    print("模型保存成功")
 
    # 6、模型加载
    # 模型的载入(包含模型结构与权重)
     loaded_model = models.load_model(clfmodel_path)
-    logging.info("模型加载成功")
+    print("模型加载成功")
     # 使用测试集验证模型
     scores = loaded_model.evaluate(test_data, test_label)
-    logging.info(scores)
+    print(scores)
 
 
     # # serialize model to JSON保存模型结构，加载方法二
@@ -276,10 +286,10 @@ if __name__ == '__main__':
     #     json_file.write(model_json)
     # # serialize weights to HDF5保存模型参数
     # model_sepcnn.save_weights("model.h5")
-    # logging.info("Saved model to disk")
+    # print("Saved model to disk")
     #
     # # later...
-    # logging.info("模型保存成功")
+    # print("模型保存成功")
     # # 5、预测数据并输出结果# load json and create model
     # preds = CNNclassifier.predictCNN(test_data, test_label)
     # pred_ = [model_sepcnn.predict(vec.reshape(1, max_len)).argmax() for vec in test_data]
