@@ -28,12 +28,15 @@ def get_data(data_path):
     :return: 测试集和训练集以及lable
     """
     # 读取数据，划分训练集和验证集
-    df = pd.read_csv(data_path, delimiter = "_!_", names=['labels','text'], header = None, encoding='utf-8')
+
+    # df = pd.read_csv(data_path, delimiter = "_!_", names=['labels','text'], header = None, encoding='utf-8')
+    df=pd.read_json(data_path)["data"].values.tolist()
+    df=pd.DataFrame(df)  # SPBMMC_6,MC
     df = shuffle(df)   #shuffle数据
     #把类别转换为数字，一共15个类别"民生故事","文化","娱乐","体育","财经","房产","汽车","教育","科技","军事","旅游","国际","证券股票","农业","电竞游戏"
     class_le = LabelEncoder()
-    df["labels"]= class_le.fit_transform(df["labels"].values) #将label转换为数字
-    x=df["text"].values
+    df["labels"]= class_le.fit_transform(df["SPBMMC_6"].values) #将label转换为数字
+    x=df["MC"].values
     y=df["labels"].to_frame().values  # 加to_frame可以让[1,2,3] 变成[[1],[2],[3]]
     train_data, test_data, train_label, test_label = train_test_split(x, y, random_state=1, train_size=0.8,
                                                                       test_size=0.2)
@@ -83,8 +86,9 @@ def seq_padding(X, padding=0):
 
 
 class data_generator:
-    def __init__(self, data, batch_size=32, maxlen=50,shuffle=True):
+    def __init__(self, data,label, batch_size=32, maxlen=50,shuffle=True):
         self.data = data
+        self.label = label
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.maxlen=maxlen
@@ -97,23 +101,26 @@ class data_generator:
 
     def __iter__(self):
         while True:
-            idxs = list(range(len(self.data)))
+            idxs = list(range(self.data.shape[0]))
 
             if self.shuffle:
                 np.random.shuffle(idxs)
 
-            X1, X2, Y = [], [], []
+            X1, X2 = [], []
+            i0=0
             for i in idxs:
                 d = self.data[i]
-                text = d[0][:self.maxlen]  # 控制最大的句子长度
+                text = d[:self.maxlen]  # 控制最大的句子长度
                 x1, x2 = tokenizer.encode(first=text) # x1为（cls,句子，SEP)在词典中的id,x2为seging几段的id:比如句子有两端[0,0,0,1,1]
                 X1.append(x1)
                 X2.append(x2)
                 if len(X1) == self.batch_size or i == idxs[-1]:
                     X1 = seq_padding(X1)
                     X2 = seq_padding(X2)
-                    yield [X1, X2]  # 返回一个个batch(array)
-                    [X1, X2] = [], [], []
+                    Y=self.label[i0:i+1]
+                    i0=i+1
+                    yield [X1, X2],Y  # 返回一个个batch(array)
+                    [X1, X2] = [], []
 
 def build_bert_model():
     x1_in = Input(shape=(None,))
@@ -145,8 +152,8 @@ if __name__=="__main__":
     train_data, test_data, train_label, test_label = get_data(data_path)  #获取训练测试数据以及词字典
     tokenizer = OurTokenizer(token_dict) # 重写tokenizer
 
-    train_D = data_generator(train_data)
-    valid_D = data_generator(test_data)
+    train_D = data_generator(train_data,train_label)
+    valid_D = data_generator(test_data,test_label)
 
     # 加载预训练模型
     bert_model = load_trained_model_from_checkpoint(config_path, checkpoint_path, seq_len=None)  # 加载预训练模型
@@ -157,14 +164,13 @@ if __name__=="__main__":
     # 搭建网络
     model=build_bert_model()
 
+    train_D = data_generator(train_data,train_label)
+    valid_D = data_generator(test_data,test_label)
 
-    train_D = data_generator(train_data)
-    valid_D = data_generator(test_data)
-
-    # model.fit_generator(
-    #     train_D.__iter__(),
-    #     steps_per_epoch=len(train_D),
-    #     epochs=5,
-    #     validation_data=valid_D.__iter__(),
-    #     validation_steps=len(valid_D)
-    # )
+    model.fit_generator(
+        train_D.__iter__(),
+        steps_per_epoch=len(train_D),
+        epochs=5,
+        validation_data=valid_D.__iter__(),
+        validation_steps=len(valid_D)
+    )
