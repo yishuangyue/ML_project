@@ -13,7 +13,7 @@ import os,sys
 import numpy as np
 import logging 
 import pandas as pd
-sys.path.append(r"/opt/liting/ML_project")
+sys.path.append(r"/Users/liting/Documents/python/Moudle/ML_project/")
 # 如果多进程分词可以导入
 from gensim.models.keyedvectors import load_word2vec_format
 from sklearn.model_selection import train_test_split
@@ -26,7 +26,7 @@ from tensorflow.keras.layers import  Flatten, Dropout, MaxPool1D, SeparableConvo
 from tensorflow.keras import regularizers
 from tensorflow.keras.layers import concatenate
 
-from ItemClassfi.JiebaSplit.jiebasplit import jieba_split
+from data.jiebasplit import jieba_split
 import tensorflow as tf
 import datetime
 
@@ -297,3 +297,11 @@ if __name__ == '__main__':
     # metrics.accuracy_score(df_test['标签'], df_test['分类结果_预测'])
     # 6、预测数据保存csv文件
     # XGBclassifier.write_data(preds)
+
+
+position_encoding = np.array(
+    [[pos / np.power(10000, 2.0 * (j // 2) / 4) for j in range(4)] for pos in range(3)])
+
+position_encoding[:, 0::2] = np.sin(position_encoding[:, 0::2])
+position_encoding[:, 1::2] = np.cos(position_encoding[:, 1::2])
+
