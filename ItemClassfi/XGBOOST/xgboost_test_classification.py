@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-import joblib
+import os,joblib
 import xgboost as xgb
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
-from ItemClassfi.JiebaSplit.jiebasplit import jieba_split
+from ItemClassfi.data_helper import data_deal
 
 
 class XGBclassifier():
@@ -40,9 +39,6 @@ class XGBclassifier():
         # dtest = xgb.DMatrix(test_weight)  # label可以不要，此处需要是为了测试效果
         param = {'max_depth': 5, 'eta': 0.3, 'eval_metric': 'merror', 'silent': 0, 'objective': 'multi:softmax',
                  'num_class': 11}  # 参数
-        # param = {'eta': 0.3, 'max_depth': 6, 'objective': 'multi:softmax'
-        #         # ,'silent': 0
-        #     , 'num_class': 87, 'eval_metric': 'merror'}  # 参数
 
         evallist = [(dtrain, 'train')]  # 这步可以不要，用于测试效果
         num_round = 60  # 循环次数
@@ -77,38 +73,26 @@ class XGBclassifier():
 
 if __name__ == '__main__':
     # 原始数据路径
-    input_path = "/Users/liting/Documents/python/Moudle/ML_project/ItemClassfi/JiebaSplit/test.json"
-    # 停用词路径
-    chinsesstop_path = "/Users/liting/Documents/python/Moudle/ML_project/ItemClassfi/JiebaSplit/chinsesstop.txt"
+    user_path= "/Users/liting/Documents/python/Moudle/ML_project/data/"
     # 模型保存路径（一个是XGBst模型，一个是TFIDF词进行向量化模型）
-    clfmodel_path = "/Users/liting/Documents/python/Moudle/ML_project/ItemClassfi/XGBOOST/clf.m"
-    vecmodel_path = "/Users/liting/Documents/python/Moudle/ML_project/ItemClassfi/XGBOOST/vec.m"
-    output_path = "/Users/liting/Documents/python/Moudle/ML_project/ItemClassfi/XGBOOST/out.csv"
+    clfmodel_path = os.path.join(user_path,"model/xgboost/clf.m")
+    vecmodel_path = os.path.join(user_path,"model/xgboost/vec.m")
+    output_path = os.path.join(user_path,"model/xgboost/out.csv")
     # 1、创建NB分类器
     XGBclassifier = XGBclassifier(vec_path=vecmodel_path, clf_path=clfmodel_path,
-                                  output_path=output_path, if_load=1)
+                                  output_path=output_path, if_load=0)
 
     # 2、载入训练数据与预测数据
-    jiaba_split = jieba_split(input_path=input_path, chinsesstop_path=chinsesstop_path)
-    df_data = jiaba_split.run_split_data()  # df["名称"，'分类'，'分词结果']
-    # 3、生成训练集和测试集
-    x = df_data["words"].to_list()
-    y = df_data["SPMC_type"].to_list()
-    print(set(y))
-    print(set(df_data["SPMC"].to_list()))
-
-    train_data, test_data, train_label, test_label = train_test_split(x, y, random_state=1
-                                                                      , train_size=0.8, test_size=0.2)
+    jiaba_split = data_deal(dataset=user_path)
+    train_data, test_data,dev_data = jiaba_split.get_data(ifsplit_data=1)  # df["text分词结果"，'lable']
     print("训练集测试集生成好了")
-    print(train_data[:10])
-    print(train_label[:10])
-    # 4、训练并预测分类正确性
-    # trainXGB = XGBclassifier.trainXGB(train_data, train_label)
+    # 3、训练并预测分类正确性
+    trainXGB = XGBclassifier.trainXGB(train_data[:,0].astype("str"), train_data[:,1].astype("int"))
     print("模型训练并保存好了")
-    # 5、预测数据并输出结果
+    # 4、预测数据并输出结果
     print("训练集准确率：")
-    XGBclassifier.predictXGB(train_data, train_label)
+    XGBclassifier.predictXGB(train_data[:,0].astype("str"), train_data[:,1].astype("int"))
     print("测试集准确率：")
-    preds = XGBclassifier.predictXGB(test_data, test_label)
-    # 6、预测数据保存csv文件
+    preds = XGBclassifier.predictXGB(test_data[:,0].astype("str"), test_data[:,1].astype("int"))
+    # 5、预测数据保存csv文件
     # XGBclassifier.write_data(preds)

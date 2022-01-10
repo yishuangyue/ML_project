@@ -9,6 +9,8 @@
 :Description:
 使用贝叶斯分类思想对分词后的数据进行分类
 """
+import os.path
+
 import pandas as pd
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
@@ -16,7 +18,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.feature_extraction.text import TfidfVectorizer
 import joblib
 
-from ItemClassfi.JiebaSplit.jiebasplit import jieba_split
+from ItemClassfi.data_helper import data_deal
 
 
 class NBclassifier():
@@ -67,40 +69,26 @@ class NBclassifier():
 
 if __name__ == '__main__':
     # 原始数据路径
-    input_path = "//ItemClassfi/JiebaSplit/test.json"
-    # 停用词路径
-    chinsesstop_path = "//ItemClassfi/JiebaSplit/chinsesstop.txt"
+    user_path= "/Users/liting/Documents/python/Moudle/ML_project/data/"
     # 模型保存路径（一个是贝叶斯模型，一个是TFIDF词进行向量化模型）
-    clfmodel_path = "//ItemClassfi/Bayes/clf.m"
-    vecmodel_path = "//ItemClassfi/Bayes/vec.m"
+    clfmodel_path = os.path.join(user_path,"model/Bayes/clf.m")
+    vecmodel_path = os.path.join(user_path,"model/Bayes/vec.m")
 
     # 1、创建NB分类器
     nbclassifier = NBclassifier(vec_path=vecmodel_path, clf_path=clfmodel_path, if_load=0)
 
     # 2、载入训练数据与预测数据
-    jiaba_split = jieba_split(input_path=input_path, chinsesstop_path=chinsesstop_path)
-    df_data = jiaba_split.run_split_data()  # df["名称"，'分类'，'分词结果']
-    if nbclassifier.if_load == 0:
-        # 3、生成训练集和测试集
-        x = df_data["words"].to_list()
-        y = df_data["SPMC"].to_list()
-        train_data, test_data, train_label, test_label = train_test_split(x, y, random_state=1, train_size=0.8,
-                                                                          test_size=0.2)
-        print("训练集测试集生成好了")
-        print(train_data[:10])
-        print(train_label[:10])
-        # 4、训练并预测分类正确性
-        nbclassifier.trainNB(train_data, train_label)
+    jiaba_split = data_deal(dataset=user_path)
+    train_data, test_data,dev_data = jiaba_split.get_data(ifsplit_data=1)  # df["text分词结果"，'lable']
+    if nbclassifier.if_load == 0: #是否需要训练数据或者直接加载模型
+        print("开始训练")
+        print(train_data.shape)
+        nbclassifier.trainNB(train_data[:,0].astype("str"), train_data[:,1].astype("int"))  # 一定注意输入数据的类型
         print("模型训练并保存好了")
-    else:
-        x = df_data["words"].to_list()
-        y = df_data["SPMC"].to_list()
-        train_data, test_data, train_label, test_label = train_test_split(x, y, random_state=1, train_size=0.2,
-                                                                          test_size=0.8)
     print("训练集准确率：")
-    nbclassifier.predictNB(train_data, train_label)
+    nbclassifier.predictNB(train_data[:,0].astype("str"), train_data[:,1].astype("int"))
     print("测试集准确率：")
-    predictList = nbclassifier.predictNB(test_data, test_label)
+    predictList = nbclassifier.predictNB(test_data[:,0].astype("str"), test_data[:,1].astype("int"))
 
 
 
