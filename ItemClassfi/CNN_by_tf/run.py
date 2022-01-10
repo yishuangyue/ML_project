@@ -54,10 +54,12 @@ class CNNclassifier():
         labels=dataset[:,1].astype("int")
         return token_ids,labels
 
-    def get_embedding_matrix(self,embed_path,vocab_size,token_key):
+    def get_embedding_matrix(self,embed_path,vocab_size,token_key,embedding_dims):
         wv_from_text = load_word2vec_format(embed_path, binary=False) # 直接加载预训练文件
         # create a weight matrix for words in training docs
-        embedding_matrix = np.zeros((vocab_size+1, 300))
+        embedding_matrix = np.zeros((vocab_size+1, embedding_dims)).astype("float32")
+        print("预训练 embedding shape000000:{}".format(embedding_matrix.shape))
+
         cnt=0
         for word, i in token_key.items():
             # embedding_vector = embed_dict.get(word)
@@ -71,7 +73,7 @@ class CNNclassifier():
             continue
         print("预训练 embedding shape:{}".format(embedding_matrix.shape))
         print("有{} 词有须训练结果".format(cnt))
-        return embedding_matrix,cnt
+        return embedding_matrix
 
     # #加载模型并创建模型 预测数据
     def predictCNN(self, dataList, labelList):
@@ -117,9 +119,9 @@ if __name__ == '__main__':
     log_dir = os.path.join(user_path,"logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
     num_words = 12000  # 总词数
     max_len = 13  # ，句子长度，不足取0
-    embedding_dims=300
-    epochs=1
-    batch_size=128
+    embedding_dims=300  # embedding维度大小
+    epochs=1     # 训练数据全部训练轮数
+    batch_size=128   # 经过多少个样本更新参数
 
 
     # 1、创建NB分类器
@@ -145,7 +147,7 @@ if __name__ == '__main__':
     print("train_data.shape:{},{}".format(train_token_ids.shape , train_labels))
 
     # 获取词嵌入矩阵预训练结果
-    embedding_matrix=CNNclassifier.get_embedding_matrix(embed_path,vocab_size,token_key)
+    embedding_matrix=CNNclassifier.get_embedding_matrix(embed_path,vocab_size,token_key,embedding_dims)
     # # 4、训练model
     # 4.1 定义模型结构
     model_sepcnn = cnn(vocab_size=vocab_size, embedding_dims=embedding_dims, max_len=max_len,

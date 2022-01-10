@@ -14,6 +14,7 @@ from tensorflow.keras.layers import  Flatten, Dropout, MaxPool1D, SeparableConvo
 from tensorflow.keras import regularizers
 from tensorflow.keras.layers import concatenate
 from tensorflow.keras import Model
+import numpy as np
 
 # 搭建cnn网络
 def cnn( vocab_size, embedding_dims, max_len, num_class,embed_matr=None):
